@@ -47,6 +47,9 @@
   .fresh.now{border-color:rgba(34,211,238,.45);color:var(--cyan)}
   .hero-t{font-family:"Cinzel",serif;font-weight:500;font-size:21px;line-height:1.26;margin:12px 0 8px;color:var(--ink)}
   .hero-s{color:var(--mute);font-size:14.5px;line-height:1.6}
+  .quiet{display:inline-block;font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--faint);border:1px solid var(--line);border-radius:999px;
+    padding:3px 9px;margin:0 0 9px}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;margin:22px 0}
   .card h2{font-family:"Cinzel",serif;font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 14px}
@@ -205,7 +208,8 @@ function renderHero(){
     (pending ? '<div class="pending">Today’s recap hasn’t published yet. Here’s the most recent one.</div>' : '') +
     '<div class="hero-meta"><span class="fresh' + (pending ? '' : ' now') + '">' + freshLabel(n) + '</span>' +
     '<span>·</span><span>' + esc(it.date) + '</span></div>' +
-    '<div class="hero-t">' + esc(cleanTitle(it.title)) + '</div>' +
+    '<div class="hero-t">' + esc(it.headline || cleanTitle(it.title)) + '</div>' +
+    (it.quiet ? '<div class="quiet">Quiet day — publisher\u2019s stock title</div>' : '') +
     '<div class="hero-s">' + esc(it.snippet) + '</div>' +
     '<a class="more" href="' + esc(it.link) + '" target="_blank" rel="noopener">Read full recap on smol.ai ↗</a>';
 }
@@ -219,7 +223,7 @@ function render(){
   if(!filtering) renderHero();
 
   const pool = filtering ? ISSUES : ISSUES.slice(1);
-  const list = filtering ? pool.filter(i => (i.title + ' ' + i.snippet).toLowerCase().includes(q)) : pool;
+  const list = filtering ? pool.filter(i => (i.title + ' ' + (i.headline||'') + ' ' + i.snippet).toLowerCase().includes(q)) : pool;
 
   if(!list.length){
     feed.innerHTML = '<div class="empty">' +
@@ -229,7 +233,8 @@ function render(){
   feed.innerHTML = list.map(i => `
     <article class="issue">
       <div class="date">${esc(i.date)}</div>
-      <div class="t">${esc(cleanTitle(i.title))}</div>
+      <div class="t">${esc(i.headline || cleanTitle(i.title))}</div>
+      ${i.quiet ? '<div class="quiet">Quiet day</div>' : ''}
       <div class="snip">${esc(i.snippet)}</div>
       <a class="more" href="${esc(i.link)}" target="_blank" rel="noopener">Read full recap on smol.ai ↗</a>
     </article>`).join('');
@@ -238,11 +243,11 @@ $('#q').addEventListener('input', render);
 
 async function loadFeed(){
   try{
-    const cached = localStorage.getItem('varta:issues:v2');
+    const cached = localStorage.getItem('varta:issues:v3');
     if(cached){ ISSUES = JSON.parse(cached); render(); }
     const r = await fetch('/api/feed'); if(!r.ok) throw new Error();
     ISSUES = await r.json();
-    localStorage.setItem('varta:issues:v2', JSON.stringify(ISSUES));
+    localStorage.setItem('varta:issues:v3', JSON.stringify(ISSUES));
     render();
   }catch(e){
     if(!ISSUES.length) $('#feed').innerHTML = '<div class="empty">Feed unreachable and no cached copy yet.</div>';
