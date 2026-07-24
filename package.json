@@ -1,0 +1,10 @@
+{
+  "name": "varta",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PWA that pushes a notification when a new AINews AI-Twitter recap publishes.",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

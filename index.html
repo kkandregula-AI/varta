@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0b10" />
+<title>VĀRTA · AI Twitter, delivered</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="icon" href="/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0b0b10; --panel:#13131c; --panel2:#1a1a26; --line:#2a2a3a;
+    --ink:#ece9f2; --mute:#9a97ab; --faint:#6b6880;
+    --fuchsia:#e879f9; --cyan:#22d3ee; --gold:#f5c542;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 40px)}
+  .wrap{max-width:680px;margin:0 auto;padding:0 20px}
+  a{color:var(--cyan);text-decoration:none}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
+
+  header{padding:34px 0 8px}
+  .eyebrow{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--faint)}
+  h1{font-family:"Cinzel",serif;font-weight:700;font-size:clamp(40px,13vw,64px);line-height:.98;margin:8px 0 6px;
+     background:linear-gradient(96deg,var(--fuchsia),var(--cyan) 55%,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--mute);font-size:15px;max-width:44ch}
+  .sub b{color:var(--ink);font-weight:500}
+
+  /* transparency strip — your signature honesty band */
+  .strip{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 4px;font-family:"DM Mono",monospace;font-size:11px}
+  .tag{border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--mute);letter-spacing:.04em}
+  .tag.real{border-color:rgba(34,211,238,.4);color:var(--cyan)}
+  .tag.real::before{content:"● ";color:var(--cyan);font-size:8px;vertical-align:1px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;margin:22px 0}
+  .card h2{font-family:"Cinzel",serif;font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 14px}
+
+  .btn{width:100%;border:0;border-radius:14px;padding:16px;font-family:"DM Sans";font-weight:700;font-size:16px;cursor:pointer;
+       color:#0b0b10;background:linear-gradient(96deg,var(--fuchsia),var(--cyan));transition:filter .15s,transform .05s}
+  .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(1px)}
+  .btn[disabled]{opacity:.5;cursor:default;filter:none}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .status{margin-top:12px;font-family:"DM Mono",monospace;font-size:12.5px;color:var(--mute);min-height:18px;line-height:1.5}
+  .status.ok{color:var(--cyan)} .status.err{color:#ff8a8a}
+
+  .filter{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .filter input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:12px;color:var(--ink);
+    padding:11px 13px;font-family:"DM Mono",monospace;font-size:13px}
+  .filter input::placeholder{color:var(--faint)}
+
+  .issue{border-top:1px solid var(--line);padding:16px 0}
+  .issue:first-of-type{border-top:0;padding-top:2px}
+  .issue .date{font-family:"DM Mono",monospace;font-size:11px;color:var(--faint);letter-spacing:.05em}
+  .issue .t{font-weight:700;font-size:16px;line-height:1.32;margin:5px 0 6px;color:var(--ink)}
+  .issue .snip{color:var(--mute);font-size:14px;line-height:1.55}
+  .issue .more{display:inline-block;margin-top:9px;font-family:"DM Mono",monospace;font-size:12px}
+  .empty{color:var(--faint);font-size:14px;font-family:"DM Mono",monospace;padding:8px 0}
+
+  .src{font-size:13.5px;color:var(--mute);line-height:1.6}
+  .src b{color:var(--ink);font-weight:500}
+  .src .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px dashed var(--line)}
+  .src .row:first-child{border-top:0}
+  .src .k{color:var(--faint);font-family:"DM Mono",monospace;font-size:12px}
+
+  footer{margin-top:34px;text-align:center;color:var(--faint);font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.04em;line-height:1.7}
+  .install-hint{background:rgba(245,197,66,.07);border:1px solid rgba(245,197,66,.3);color:var(--gold);
+    border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px;display:none}
+  @media (prefers-reduced-motion:no-preference){.issue{animation:rise .4s ease both}}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Krishnamurthy Kandregula · Innovation Lab</div>
+    <h1>VĀRTA</h1>
+    <div class="sub"><b>AI Twitter, distilled and pushed to your phone.</b> One notification when a fresh daily recap lands — no doomscrolling.</div>
+    <div class="strip">
+      <span class="tag real">Live feed</span>
+      <span class="tag real">Real push</span>
+      <span class="tag">No simulated data</span>
+      <span class="tag">Free · no API key</span>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>Notifications</h2>
+    <button class="btn" id="enable">Enable push on this device</button>
+    <div class="status" id="status">Tap to get a push when a new recap publishes.</div>
+    <div class="install-hint" id="iosHint">On iPhone, push only works from an installed app. Tap <b>Share → Add to Home Screen</b>, open VĀRTA from the home screen, then enable.</div>
+  </section>
+
+  <section class="card">
+    <h2>Latest recaps</h2>
+    <div class="filter">
+      <input id="q" placeholder="filter by topic — e.g. agents, open weights, india" autocomplete="off" />
+    </div>
+    <div id="feed"><div class="empty">Loading feed…</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Source</h2>
+    <div class="src">
+      <p style="margin:0 0 12px">Recaps are authored by <b>AINews</b>, the daily AI-Twitter/Reddit/Discord roundup by <b>Smol AI (swyx)</b>. VĀRTA only watches their public feed and links back — it doesn't touch the X API or scrape anything.</p>
+      <div class="row"><span class="k">Publisher</span><a href="https://news.smol.ai" target="_blank" rel="noopener">news.smol.ai ↗</a></div>
+      <div class="row"><span class="k">Feed</span><span>rss.xml · public</span></div>
+      <div class="row"><span class="k">Cost</span><span>Free — RSS, no key</span></div>
+      <div class="row"><span class="k">Cadence</span><span>~daily (weekdays)</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Designed &amp; Architected by Krishnamurthy Kandregula · Made by Claude<br/>
+    Full text &amp; credit belong to AINews / Smol AI
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const statusEl = $('#status');
+function setStatus(msg, kind){ statusEl.textContent = msg; statusEl.className = 'status' + (kind ? ' '+kind : ''); }
+
+const isiOS = /iP(hone|ad|od)/.test(navigator.platform) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+// ---- Service worker + push subscribe ----
+function urlB64ToUint8(base64){
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(b64); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+
+async function enablePush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    setStatus('This browser can’t do web push. Try Chrome, or an installed PWA on iOS 16.4+.', 'err'); return;
+  }
+  if(isiOS && !installed){ $('#iosHint').style.display='block';
+    setStatus('Add VĀRTA to your home screen first (see below).', 'err'); return; }
+  try{
+    $('#enable').disabled = true; setStatus('Registering…');
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ setStatus('Permission denied. Enable notifications in settings to continue.', 'err'); $('#enable').disabled=false; return; }
+    const { key } = await (await fetch('/api/vapid')).json();
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToUint8(key) });
+    const r = await fetch('/api/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(sub) });
+    if(!r.ok) throw new Error('subscribe failed');
+    setStatus('Done. You’ll get a push when the next recap lands.', 'ok');
+    $('#enable').textContent = 'Notifications on';
+  }catch(e){
+    console.error(e); setStatus('Couldn’t enable push: '+e.message, 'err'); $('#enable').disabled=false;
+  }
+}
+$('#enable').addEventListener('click', enablePush);
+if(isiOS && !installed) $('#iosHint').style.display='block';
+
+// ---- Feed browsing (server proxy avoids CORS) ----
+let ISSUES = [];
+function esc(s){ return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function render(){
+  const q = $('#q').value.trim().toLowerCase();
+  const list = q ? ISSUES.filter(i => (i.title+' '+i.snippet).toLowerCase().includes(q)) : ISSUES;
+  const feed = $('#feed');
+  if(!list.length){ feed.innerHTML = '<div class="empty">'+(q?'No recap mentions “'+esc(q)+'”.':'Nothing yet.')+'</div>'; return; }
+  feed.innerHTML = list.map(i => `
+    <article class="issue">
+      <div class="date">${esc(i.date)}</div>
+      <div class="t">${esc(i.title)}</div>
+      <div class="snip">${esc(i.snippet)}</div>
+      <a class="more" href="${esc(i.link)}" target="_blank" rel="noopener">Read full recap on smol.ai ↗</a>
+    </article>`).join('');
+}
+$('#q').addEventListener('input', render);
+
+async function loadFeed(){
+  try{
+    const cached = localStorage.getItem('varta:issues');
+    if(cached){ ISSUES = JSON.parse(cached); render(); }
+    const r = await fetch('/api/feed'); if(!r.ok) throw new Error();
+    ISSUES = await r.json();
+    localStorage.setItem('varta:issues', JSON.stringify(ISSUES));
+    render();
+  }catch(e){
+    if(!ISSUES.length) $('#feed').innerHTML = '<div class="empty">Feed unreachable and no cached copy yet.</div>';
+  }
+}
+loadFeed();
+
+// register SW quietly for offline shell even before enabling push
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script>
+</body>
+</html>
