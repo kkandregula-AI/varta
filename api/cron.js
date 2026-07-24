@@ -38,9 +38,11 @@ export default async function handler(req, res) {
     );
 
     const subs = (await redis('SMEMBERS', SUBS_KEY)) || [];
+    // The parser already strips the [AINews] prefix and, on stock-title days,
+    // derives a real headline from the recap's lead sentence.
     const payload = JSON.stringify({
-      title: 'New AI recap',
-      body: latest.title.replace(/^\[AINews\]\s*/i, ''),
+      title: latest.quiet ? 'New AI recap · quiet day' : 'New AI recap',
+      body: latest.headline || latest.title,
       url: latest.link || 'https://news.smol.ai'
     });
 
