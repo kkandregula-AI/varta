@@ -78,4 +78,3 @@ After enabling push on your phone, force a send by clearing the stored ID: delet
 Recaps, wording, and all credit belong to **AINews / Smol AI** (news.smol.ai). VĀRTA is a personal reader/notifier.
 
 *Designed & Architected by Krishnamurthy Kandregula · Made by Claude.*
-"# varta" 
