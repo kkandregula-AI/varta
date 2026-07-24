@@ -39,6 +39,15 @@
   .tag.real{border-color:rgba(34,211,238,.4);color:var(--cyan)}
   .tag.real::before{content:"● ";color:var(--cyan);font-size:8px;vertical-align:1px}
 
+  .hero{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:22px;margin:22px 0}
+  .pending{background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.28);color:var(--gold);
+    border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.45;margin-bottom:14px}
+  .hero-meta{display:flex;align-items:center;gap:8px;font-family:"DM Mono",monospace;font-size:11px;color:var(--faint);letter-spacing:.05em}
+  .fresh{border:1px solid var(--line);border-radius:999px;padding:3px 10px;text-transform:uppercase;letter-spacing:.14em;color:var(--mute)}
+  .fresh.now{border-color:rgba(34,211,238,.45);color:var(--cyan)}
+  .hero-t{font-family:"Cinzel",serif;font-weight:500;font-size:21px;line-height:1.26;margin:12px 0 8px;color:var(--ink)}
+  .hero-s{color:var(--mute);font-size:14.5px;line-height:1.6}
+
   .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;margin:22px 0}
   .card h2{font-family:"Cinzel",serif;font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 14px}
 
@@ -90,6 +99,10 @@
     </div>
   </header>
 
+  <section class="hero" id="hero">
+    <div class="empty">Loading latest recap…</div>
+  </section>
+
   <section class="card">
     <h2>Notifications</h2>
     <button class="btn" id="enable">Enable push on this device</button>
@@ -98,7 +111,7 @@
   </section>
 
   <section class="card">
-    <h2>Latest recaps</h2>
+    <h2>Earlier recaps</h2>
     <div class="filter">
       <input id="q" placeholder="filter by topic — e.g. agents, open weights, india" autocomplete="off" />
     </div>
@@ -165,15 +178,58 @@ if(isiOS && !installed) $('#iosHint').style.display='block';
 // ---- Feed browsing (server proxy avoids CORS) ----
 let ISSUES = [];
 function esc(s){ return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function cleanTitle(t){ return (t||'').replace(/^\[AINews\]\s*/i,''); }
+
+// How many calendar days old is this issue? null if we can't tell.
+function dayDiff(iso){
+  if(!iso) return null;
+  const d = new Date(iso); if(isNaN(d)) return null;
+  const then = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const n = new Date(); const now = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  return Math.round((now - then) / 86400000);
+}
+function freshLabel(n){
+  if(n === null) return 'Latest';
+  if(n <= 0) return 'Today';
+  if(n === 1) return 'Yesterday';
+  return n + ' days ago';
+}
+
+function renderHero(){
+  const el = $('#hero');
+  if(!ISSUES.length){ el.innerHTML = '<div class="empty">No recaps loaded yet.</div>'; return; }
+  const it = ISSUES[0];
+  const n = dayDiff(it.iso);
+  const pending = n !== null && n > 0;   // today's issue hasn't published
+  el.innerHTML =
+    (pending ? '<div class="pending">Today’s recap hasn’t published yet. Here’s the most recent one.</div>' : '') +
+    '<div class="hero-meta"><span class="fresh' + (pending ? '' : ' now') + '">' + freshLabel(n) + '</span>' +
+    '<span>·</span><span>' + esc(it.date) + '</span></div>' +
+    '<div class="hero-t">' + esc(cleanTitle(it.title)) + '</div>' +
+    '<div class="hero-s">' + esc(it.snippet) + '</div>' +
+    '<a class="more" href="' + esc(it.link) + '" target="_blank" rel="noopener">Read full recap on smol.ai ↗</a>';
+}
+
 function render(){
   const q = $('#q').value.trim().toLowerCase();
-  const list = q ? ISSUES.filter(i => (i.title+' '+i.snippet).toLowerCase().includes(q)) : ISSUES;
   const feed = $('#feed');
-  if(!list.length){ feed.innerHTML = '<div class="empty">'+(q?'No recap mentions “'+esc(q)+'”.':'Nothing yet.')+'</div>'; return; }
+  // While filtering, search everything and hide the hero to avoid a duplicate.
+  const filtering = q.length > 0;
+  $('#hero').style.display = filtering ? 'none' : '';
+  if(!filtering) renderHero();
+
+  const pool = filtering ? ISSUES : ISSUES.slice(1);
+  const list = filtering ? pool.filter(i => (i.title + ' ' + i.snippet).toLowerCase().includes(q)) : pool;
+
+  if(!list.length){
+    feed.innerHTML = '<div class="empty">' +
+      (filtering ? 'No recap mentions “' + esc(q) + '”.' : 'Nothing earlier in the feed yet.') + '</div>';
+    return;
+  }
   feed.innerHTML = list.map(i => `
     <article class="issue">
       <div class="date">${esc(i.date)}</div>
-      <div class="t">${esc(i.title)}</div>
+      <div class="t">${esc(cleanTitle(i.title))}</div>
       <div class="snip">${esc(i.snippet)}</div>
       <a class="more" href="${esc(i.link)}" target="_blank" rel="noopener">Read full recap on smol.ai ↗</a>
     </article>`).join('');
@@ -182,11 +238,11 @@ $('#q').addEventListener('input', render);
 
 async function loadFeed(){
   try{
-    const cached = localStorage.getItem('varta:issues');
+    const cached = localStorage.getItem('varta:issues:v2');
     if(cached){ ISSUES = JSON.parse(cached); render(); }
     const r = await fetch('/api/feed'); if(!r.ok) throw new Error();
     ISSUES = await r.json();
-    localStorage.setItem('varta:issues', JSON.stringify(ISSUES));
+    localStorage.setItem('varta:issues:v2', JSON.stringify(ISSUES));
     render();
   }catch(e){
     if(!ISSUES.length) $('#feed').innerHTML = '<div class="empty">Feed unreachable and no cached copy yet.</div>';
