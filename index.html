@@ -69,7 +69,10 @@
 
   .issue{border-top:1px solid var(--line);padding:16px 0}
   .issue:first-of-type{border-top:0;padding-top:2px}
+.issue .issue-meta{display:flex;align-items:center;gap:9px;margin-bottom:2px}
   .issue .date{font-family:"DM Mono",monospace;font-size:11px;color:var(--faint);letter-spacing:.05em}
+  .chip{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--cyan);border:1px solid rgba(34,211,238,.35);border-radius:999px;padding:2px 8px}
   .issue .t{font-weight:700;font-size:16px;line-height:1.32;margin:5px 0 6px;color:var(--ink)}
   .issue .snip{color:var(--mute);font-size:14px;line-height:1.55}
   .issue .more{display:inline-block;margin-top:9px;font-family:"DM Mono",monospace;font-size:12px}
@@ -114,7 +117,8 @@
   </section>
 
   <section class="card">
-    <h2>Earlier recaps</h2>
+    <h2>Across AI</h2>
+    <p style="color:var(--faint);font-size:12.5px;margin:-6px 0 14px;line-height:1.5">Merged from multiple sources, newest first. Type a source name (e.g. <b style="color:var(--mute)">openai</b>, <b style="color:var(--mute)">verge</b>) to filter.</p>
     <div class="filter">
       <input id="q" placeholder="filter by topic — e.g. agents, open weights, india" autocomplete="off" />
     </div>
@@ -124,11 +128,14 @@
   <section class="card">
     <h2>Source</h2>
     <div class="src">
-      <p style="margin:0 0 12px">Recaps are authored by <b>AINews</b>, the daily AI-Twitter/Reddit/Discord roundup by <b>Smol AI (swyx)</b>. VĀRTA only watches their public feed and links back — it doesn't touch the X API or scrape anything.</p>
-      <div class="row"><span class="k">Publisher</span><a href="https://news.smol.ai" target="_blank" rel="noopener">news.smol.ai ↗</a></div>
-      <div class="row"><span class="k">Feed</span><span>rss.xml · public</span></div>
-      <div class="row"><span class="k">Cost</span><span>Free — RSS, no key</span></div>
-      <div class="row"><span class="k">Cadence</span><span>~daily (weekdays)</span></div>
+      <p style="margin:0 0 12px">Every item links back to its publisher — VĀRTA only reads public RSS/Atom feeds and credits each source. It never touches the X API or scrapes.</p>
+      <div class="row"><span class="k">AINews · smol.ai</span><a href="https://news.smol.ai" target="_blank" rel="noopener">news.smol.ai ↗</a></div>
+      <div class="row"><span class="k">Hugging Face</span><a href="https://huggingface.co/blog" target="_blank" rel="noopener">huggingface.co ↗</a></div>
+      <div class="row"><span class="k">OpenAI</span><a href="https://openai.com/news" target="_blank" rel="noopener">openai.com ↗</a></div>
+      <div class="row"><span class="k">Google DeepMind</span><a href="https://deepmind.google/blog" target="_blank" rel="noopener">deepmind.google ↗</a></div>
+      <div class="row"><span class="k">The Verge</span><a href="https://www.theverge.com/ai-artificial-intelligence" target="_blank" rel="noopener">theverge.com ↗</a></div>
+      <div class="row"><span class="k">TechCrunch</span><a href="https://techcrunch.com/category/artificial-intelligence/" target="_blank" rel="noopener">techcrunch.com ↗</a></div>
+      <div class="row"><span class="k">Cost</span><span>All free — public feeds, no key</span></div>
     </div>
   </section>
 
@@ -201,12 +208,14 @@ function freshLabel(n){
 function renderHero(){
   const el = $('#hero');
   if(!ISSUES.length){ el.innerHTML = '<div class="empty">No recaps loaded yet.</div>'; return; }
-  const it = ISSUES[0];
+  const it = ISSUES.find(x => x.source === 'AINews') || ISSUES[0];
+  window.__heroGuid = it.guid;
   const n = dayDiff(it.iso);
   const pending = n !== null && n > 0;   // today's issue hasn't published
   el.innerHTML =
     (pending ? '<div class="pending">Today’s recap hasn’t published yet. Here’s the most recent one.</div>' : '') +
     '<div class="hero-meta"><span class="fresh' + (pending ? '' : ' now') + '">' + freshLabel(n) + '</span>' +
+    '<span>·</span><span class="chip">' + esc(it.source || 'AINews') + '</span>' +
     '<span>·</span><span>' + esc(it.date) + '</span></div>' +
     '<div class="hero-t">' + esc(it.headline || cleanTitle(it.title)) + '</div>' +
     (it.quiet ? '<div class="quiet">Quiet day — publisher\u2019s stock title</div>' : '') +
@@ -222,8 +231,8 @@ function render(){
   $('#hero').style.display = filtering ? 'none' : '';
   if(!filtering) renderHero();
 
-  const pool = filtering ? ISSUES : ISSUES.slice(1);
-  const list = filtering ? pool.filter(i => (i.title + ' ' + (i.headline||'') + ' ' + i.snippet).toLowerCase().includes(q)) : pool;
+  const pool = filtering ? ISSUES : ISSUES.filter(i => i.guid !== window.__heroGuid);
+  const list = filtering ? pool.filter(i => (i.source + ' ' + i.title + ' ' + (i.headline||'') + ' ' + i.snippet).toLowerCase().includes(q)) : pool;
 
   if(!list.length){
     feed.innerHTML = '<div class="empty">' +
@@ -232,22 +241,22 @@ function render(){
   }
   feed.innerHTML = list.map(i => `
     <article class="issue">
-      <div class="date">${esc(i.date)}</div>
+      <div class="issue-meta"><span class="chip">${esc(i.source)}</span><span class="date">${esc(i.date)}</span></div>
       <div class="t">${esc(i.headline || cleanTitle(i.title))}</div>
       ${i.quiet ? '<div class="quiet">Quiet day</div>' : ''}
       <div class="snip">${esc(i.snippet)}</div>
-      <a class="more" href="${esc(i.link)}" target="_blank" rel="noopener">Read full recap on smol.ai ↗</a>
+      <a class="more" href="${esc(i.link)}" target="_blank" rel="noopener">${i.source === 'AINews' ? 'Read full recap on smol.ai' : 'Read on ' + esc(i.source)} ↗</a>
     </article>`).join('');
 }
 $('#q').addEventListener('input', render);
 
 async function loadFeed(){
   try{
-    const cached = localStorage.getItem('varta:issues:v3');
+    const cached = localStorage.getItem('varta:issues:v4');
     if(cached){ ISSUES = JSON.parse(cached); render(); }
     const r = await fetch('/api/feed'); if(!r.ok) throw new Error();
     ISSUES = await r.json();
-    localStorage.setItem('varta:issues:v3', JSON.stringify(ISSUES));
+    localStorage.setItem('varta:issues:v4', JSON.stringify(ISSUES));
     render();
   }catch(e){
     if(!ISSUES.length) $('#feed').innerHTML = '<div class="empty">Feed unreachable and no cached copy yet.</div>';
