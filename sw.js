@@ -1,6 +1,6 @@
 // VĀRTA service worker — real Web Push + offline shell.
 // Must be served from origin root (not a blob URL) for push to work, esp. on iOS.
-const CACHE = 'varta-v1';
+const CACHE = 'varta-v3';   // bump this whenever the shell must refresh
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -14,14 +14,25 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Never cache API calls; cache-first for the shell so it opens offline.
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  if (url.pathname.startsWith('/api/')) return; // always hit network
-  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request)));
+  const req = e.request;
+  const url = new URL(req.url);
+  if (url.pathname.startsWith('/api/')) return; // API: always network, never cache
+
+  const isHTML = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+  if (isHTML) {
+    // Network-first: the shell always updates when online; cache is the offline fallback.
+    e.respondWith(
+      fetch(req)
+        .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('/', copy)); return res; })
+        .catch(() => caches.match(req).then(hit => hit || caches.match('/')))
+    );
+    return;
+  }
+  // Static assets (icons, manifest): cache-first is fine.
+  e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
 });
 
-// The actual push: server sends {title, body, url}
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data && e.data.text() }; }
